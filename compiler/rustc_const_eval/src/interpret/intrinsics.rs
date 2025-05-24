@@ -518,6 +518,37 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::fabsf64 => self.float_abs_intrinsic::<Double>(args, dest)?,
             sym::fabsf128 => self.float_abs_intrinsic::<Quad>(args, dest)?,
 
+            sym::floorf16 => self.float_floor_intrinsic::<Half>(args, dest)?,
+            sym::floorf32 => self.float_floor_intrinsic::<Single>(args, dest)?,
+            sym::floorf64 => self.float_floor_intrinsic::<Double>(args, dest)?,
+            sym::floorf128 => self.float_floor_intrinsic::<Quad>(args, dest)?,
+
+            sym::ceilf16 => self.float_ceil_intrinsic::<Half>(args, dest)?,
+            sym::ceilf32 => self.float_ceil_intrinsic::<Single>(args, dest)?,
+            sym::ceilf64 => self.float_ceil_intrinsic::<Double>(args, dest)?,
+            sym::ceilf128 => self.float_ceil_intrinsic::<Quad>(args, dest)?,
+
+            sym::truncf16 => self.float_trunc_intrinsic::<Half>(args, dest)?,
+            sym::truncf32 => self.float_trunc_intrinsic::<Single>(args, dest)?,
+            sym::truncf64 => self.float_trunc_intrinsic::<Double>(args, dest)?,
+            sym::truncf128 => self.float_trunc_intrinsic::<Quad>(args, dest)?,
+
+            sym::roundf16 => self.float_round_intrinsic::<Half>(args, dest)?,
+            sym::roundf32 => self.float_round_intrinsic::<Single>(args, dest)?,
+            sym::roundf64 => self.float_round_intrinsic::<Double>(args, dest)?,
+            sym::roundf128 => self.float_round_intrinsic::<Quad>(args, dest)?,
+
+            sym::round_ties_even_f16 => self.float_round_ties_even_intrinsic::<Half>(args, dest)?,
+            sym::round_ties_even_f32 => {
+                self.float_round_ties_even_intrinsic::<Single>(args, dest)?
+            }
+            sym::round_ties_even_f64 => {
+                self.float_round_ties_even_intrinsic::<Double>(args, dest)?
+            }
+            sym::round_ties_even_f128 => {
+                self.float_round_ties_even_intrinsic::<Quad>(args, dest)?
+            }
+
             // Unsupported intrinsic: skip the return_to_block below.
             _ => return interp_ok(false),
         }
@@ -898,6 +929,76 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let x: F = self.read_scalar(&args[0])?.to_float()?;
         // bitwise, no NaN adjustments
         self.write_scalar(x.abs(), dest)?;
+        interp_ok(())
+    }
+
+    fn float_floor_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = self.read_scalar(&args[0])?.to_float()?;
+        let res = x.round_to_integral(rustc_apfloat::Round::TowardNegative).value;
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn float_ceil_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = self.read_scalar(&args[0])?.to_float()?;
+        let res = x.round_to_integral(rustc_apfloat::Round::TowardPositive).value;
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn float_trunc_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = self.read_scalar(&args[0])?.to_float()?;
+        let res = x.round_to_integral(rustc_apfloat::Round::TowardZero).value;
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn float_round_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = self.read_scalar(&args[0])?.to_float()?;
+        let res = x.round_to_integral(rustc_apfloat::Round::NearestTiesToAway).value;
+        self.write_scalar(res, dest)?;
+        interp_ok(())
+    }
+
+    fn float_round_ties_even_intrinsic<F>(
+        &mut self,
+        args: &[OpTy<'tcx, M::Provenance>],
+        dest: &MPlaceTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ()>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = self.read_scalar(&args[0])?.to_float()?;
+        let res = x.round_to_integral(rustc_apfloat::Round::NearestTiesToEven).value;
+        self.write_scalar(res, dest)?;
         interp_ok(())
     }
 }
